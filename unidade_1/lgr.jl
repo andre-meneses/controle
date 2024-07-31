@@ -81,11 +81,17 @@ function compute_derivative_roots(sys)
 end
 
 function main()
-    G = tf([0,1], [1,6,8])
-    H = tf([1,1], [1,4,0])
+    G = tf([1, 8, 17], [1,1])
+    H = tf([1,7,12,10], [1,5])
 
     sys = System(G,H)
-    # println(compute_derivative_roots(sys))
+
+    println(sys.poles)
+    println(sys.zeros)
+    println(compute_sigma(sys))
+    println(compute_phi(sys))
+    println(compute_derivative(sys))
+    println(compute_derivative_roots(sys))
     plot_rlocus(sys)
 
 end
