@@ -2,22 +2,30 @@ import control as ctrl
 import numpy as np
 import sympy as sp
 
-class SystemAnalysis:
+class DiscreteSystemAnalysis:
     def __init__(self, A, B, C, D, Ts=None):
+        self.Ts = Ts
+
         self.A = A
         self.B = B
         self.C = C
         self.D = D
-        self.Ts = Ts
         # Discretize only if Ts is provided
         self.sys_discrete = self.discretize() if Ts is not None else ctrl.StateSpace(A, B, C, D)
 
+        
     def discretize(self, method='zoh'):
         """
         Discretizes the continuous-time state-space model using Zero-Order Hold by default.
         """
         sys_continuous = ctrl.StateSpace(self.A, self.B, self.C, self.D)
         sys_discrete = ctrl.sample_system(sys_continuous, self.Ts, method=method)
+
+        self.A = sys_discrete.A
+        self.B = sys_discrete.B
+        self.C = sys_discrete.C
+        self.D = sys_discrete.D
+
         return sys_discrete
 
     def check_stability(self):
@@ -78,8 +86,49 @@ class SystemAnalysis:
         if np.linalg.matrix_rank(obs_matrix) != self.A.shape[0]:
             raise ValueError("The system is not observable and observer design cannot be performed.")
 
-        L = ctrl.place_poles(self.A.T, self.C.T, desired_observer_poles).gain_matrix.T
-        return L
+        L = ctrl.place(self.A.T, self.C.T, desired_observer_poles)
+        return L.T
+
+
+    def augment_system(self,reference_type='step'):
+        """
+        Augments a state-space system for reference tracking (step or ramp).
+
+        Parameters:
+        - reference_type: Type of reference to track ('step' or 'ramp').
+
+        Returns:
+        - A_aug: Augmented state matrix.
+        - B_aug: Augmented input matrix.
+        - C_aug: Augmented output matrix.
+        """
+        A = self.A
+        B = self.B
+        C = self.C
+        # Original system dimensions
+        n = A.shape[0]  # Number of states
+        m = B.shape[1]  # Number of inputs
+        p = C.shape[0]  # Number of outputs
+
+        # Augmentation for step reference tracking
+        if reference_type == 'step':
+            # Augmenting state matrix A
+            A_aug = np.block([
+                [A, np.zeros((n, p))],
+                [-C, np.zeros((p, p))]
+            ])
+            # Augmenting input matrix B
+            B_aug = np.vstack([B, np.zeros((p, m))])
+            # Augmenting output matrix C
+            C_aug = np.hstack([C, np.eye(p)])
+        
+        else:
+            raise ValueError("Unsupported reference type. Choose 'step' or 'ramp'.")
+
+        self.A_aug = A_aug
+        self.B_aug = B_aug
+        self.C_aug = C_aug
+        self.sys_aug = ctrl.StateSpace(A_aug, B_aug, C_aug, self.D)
 
     def compute_k2_k1(self, K_hat):
         """
