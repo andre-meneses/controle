@@ -1,56 +1,30 @@
-import control as ctrl
-
 import numpy as np
+import sympy as sp
 
-def tf_ss(num, den, form='controllable'):
+def tf_ss(coeffs_num, coeffs_denom, form='control'):
     """
-    Converts a transfer function defined by numerator (num) and denominator (den)
-    coefficients to its state-space representation in either the canonical controllable 
-    or observable form.
-
-    Parameters:
-    num (list): Numerator coefficients.
-    den (list): Denominator coefficients.
-    form (str): 'controllable' or 'observable' specifying the form of the state-space.
-
-    Returns:
-    tuple: Returns the matrices A, B, C of the state-space representation.
+    Transforma uma função de transferência em sua representação em espaço de estados.
+    :param coeffs_num: Lista de coeficientes do numerador [b_n, ..., b_1, b_0].
+    :param coeffs_denom: Lista de coeficientes do denominador [a_n, ..., a_1, a_0].
+    :param form: 'control' para forma canônica controlável e 'observe' para forma canônica observável.
+    :return: Matrizes A, B, C, D do sistema em espaço de estados.
     """
-    # Normalize the denominator coefficients such that the highest degree coefficient is 1
-    den = np.array(den) / den[0]
-    num = np.array(num) / den[0]
-    
-    # Degree of the polynomial
-    n = len(den) - 1
-    m = len(num) - 1
-    
-    # Define matrices A, B, C based on the form
-    if form.lower() == 'controllable':
-        # Controllable form
-        A = np.zeros((n, n))
-        A[-1, :] = -den[1:]  # Last row is the negative of the denominator coefficients
-        A[:-1, 1:] = np.eye(n-1)  # Upper part is the shifted identity matrix
-        
-        B = np.zeros((n, 1))
-        B[-1, 0] = 1
-        
-        C = np.zeros((1, n))
-        C[0, :m+1] = num[::-1]  # Place the numerator coefficients in reverse order
+    n = len(coeffs_denom) - 1  # Ordem do sistema
+    diagonal = np.eye(n-1)
+    D = np.array([0])
 
-    elif form.lower() == 'observable':
-        # Observable form
-        A = np.zeros((n, n))
-        A[:, 0] = -den[1:]  # First column is the negative of the denominator coefficients
-        A[1:, :-1] = np.eye(n-1)  # Lower part is the shifted identity matrix
+    if form == 'control':
+        alphas = [-1*a for a in coeffs_denom[:0:-1]]
+        zeros_column = np.vstack((n-1)*[0])
+        A = np.block([[zeros_column, diagonal], alphas]) 
+        B= np.vstack((np.zeros((n-1, 1)), np.array([[1]])))
+        C = np.array([b for b in coeffs_num[::-1]])
+    elif form == 'observe':
+        alphas = np.vstack([[-1*a] for a in coeffs_denom[:0:-1]])
+        zeros_line = np.zeros((1,n-1))
+        A = np.block([np.vstack((zeros_line, diagonal)), alphas])
+        B = np.array([[b] for b in coeffs_num[::-1]])
+        C = np.hstack((zeros_line, np.array([[1]])))
 
-        C = np.zeros((1, n))
-        C[0, 0] = 1
-        
-        B = np.zeros((n, 1))
-        B[:m+1, 0] = num[::-1]  # Place the numerator coefficients in reverse order
-
-    else:
-        raise ValueError("Invalid form. Use 'controllable' or 'observable'.")
-
-    return A, B, C
+    return A,B,C,D
 

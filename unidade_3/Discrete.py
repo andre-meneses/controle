@@ -67,7 +67,7 @@ class DiscreteSystemAnalysis:
         # The system is observable if the rank of the observability matrix equals the number of states
         return rank_obs_matrix == self.A.shape[0]
 
-    def ackermann_state_feedback(self, desired_poles):
+    def ackermann_state_feedback(self, desired_poles, augmented=False):
         """
         Computes the state feedback gain matrix K using Ackermann's formula.
         """
@@ -90,7 +90,7 @@ class DiscreteSystemAnalysis:
         return L.T
 
 
-    def augment_system(self,reference_type='step'):
+    def augment_system(self):
         """
         Augments a state-space system for reference tracking (step or ramp).
 
@@ -102,64 +102,26 @@ class DiscreteSystemAnalysis:
         - B_aug: Augmented input matrix.
         - C_aug: Augmented output matrix.
         """
-        A = self.A
-        B = self.B
+        G = self.A
+        H = self.B
         C = self.C
         # Original system dimensions
-        n = A.shape[0]  # Number of states
-        m = B.shape[1]  # Number of inputs
+
+        n = G.shape[0]  # Number of states
+        m = H.shape[1]  # Number of inputs
         p = C.shape[0]  # Number of outputs
 
-        # Augmentation for step reference tracking
-        if reference_type == 'step':
-            # Augmenting state matrix A
-            A_aug = np.block([
-                [A, B],
-                [np.zeros(1,n), np.zeros((p, m))]
-            ])
-            # Augmenting input matrix B
-            B_aug = np.vstack([np.zeros((1, n+1))])
-            # Augmenting output matrix C
-            C_aug = np.hstack([C, np.eye(p)])
-        else:
-            raise ValueError("Unsupported reference type. Choose 'step' or 'ramp'.")
+        # Augmenting state matrix A
+        A_aug = np.block([
+            [G, H],
+            [np.zeros((1,n)), np.zeros((p, m))]
+        ])
+
+        B_aug = np.vstack((np.zeros((n, 1)), np.array([[1]])))
 
         self.A_aug = A_aug
         self.B_aug = B_aug
-        self.C_aug = C_aug
-        self.sys_aug = ctrl.StateSpace(A_aug, B_aug, C_aug, self.D)
 
-    def compute_k2_k1(self, K_hat):
-        """
-        Computes the feedback components k2 and k1 using a predefined matrix formula.
-        """
-        n = self.A.shape[0]  # Number of states
-        m = self.B.shape[1]  # Number of inputs
-
-        # Constructing the selector matrix based on the dimensions of A and B
-        selector = np.zeros((n + m, m))
-        selector[-m:, :] = np.eye(m)  # Set the last block to identity of size m
-
-        # Constructing the inverse of the block matrix
-        block_matrix = np.block([
-            [self.A - np.eye(n), self.B],
-            [self.C @ self.A, self.C @ self.B]
-        ])
-        inv_block_matrix = np.linalg.inv(block_matrix)
-
-        # Multiplying K_hat with the selector and the inverse of the block matrix
-        result = K_hat @ selector @ inv_block_matrix
-
-        # Extract k2 and k1 (assuming result is structured correctly)
-        k2 = result[:, :n]  # Feedback gains for state variables
-        k1 = result[:, n:]  # Feedback gains for input variables
-
-        print("k2 Feedback Matrix:")
-        sp.pprint(sp.Matrix(k2))
-        print("k1 Feedback Matrix:")
-        sp.pprint(sp.Matrix(k1))
-
-        return k2, k1
 
 if __name__ == '__main__':
     A = np.array([[0, 1], [0, -2]])
