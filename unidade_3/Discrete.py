@@ -114,14 +114,13 @@ class DiscreteSystemAnalysis:
         if reference_type == 'step':
             # Augmenting state matrix A
             A_aug = np.block([
-                [A, np.zeros((n, p))],
-                [-C, np.zeros((p, p))]
+                [A, B],
+                [np.zeros(1,n), np.zeros((p, m))]
             ])
             # Augmenting input matrix B
-            B_aug = np.vstack([B, np.zeros((p, m))])
+            B_aug = np.vstack([np.zeros((1, n+1))])
             # Augmenting output matrix C
             C_aug = np.hstack([C, np.eye(p)])
-        
         else:
             raise ValueError("Unsupported reference type. Choose 'step' or 'ramp'.")
 
