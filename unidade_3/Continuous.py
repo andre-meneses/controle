@@ -83,7 +83,7 @@ class ContinousSystemAnalysis:
 
         K = ctrl.acker(A, B, desired_poles)
 
-        K = -1*K
+        # K = -1*K
 
         return K
 

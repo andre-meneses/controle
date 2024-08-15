@@ -65,7 +65,6 @@ def input_matrices():
     # Return the matrices
     return A, B, C, D
 
-
 def ackermann_observer_gain(A, C, poles):
     n = A.shape[0]
     # Cria a matriz V
@@ -74,7 +73,7 @@ def ackermann_observer_gain(A, C, poles):
         V = np.vstack((V, C @ np.linalg.matrix_power(A, i)))
 
     poly_coeffs = np.poly(poles)
-    # print(poly_coeffs)
+    print(poly_coeffs)
 
     # Cria q_l(A) = A^n + a_{n-1}A^{n-1} + ... + a_1A + a_0I
     q_l_A = np.linalg.matrix_power(A, n)
@@ -82,8 +81,13 @@ def ackermann_observer_gain(A, C, poles):
         # print(f"poly: {poly_coeffs[i]}, n-i: {n-i}")
         q_l_A += poly_coeffs[i] * np.linalg.matrix_power(A, n-i)
 
+    print("-------")
+    sp.pprint(q_l_A)
+
     # Calcular L = q_l(A)V^{-1}[0 0 ... 1]^T
     V_inv = np.linalg.inv(V)
+    print("--------")
+    sp.pprint(V_inv)
     e_n = np.zeros((n, 1))
     e_n[-1, 0] = 1
     L = q_l_A @ V_inv @ e_n
@@ -99,6 +103,7 @@ def ackermann_control_gain(A, B, poles):
 
     # Polinômio característico desejado com os coeficientes dados pelos polos
     poly_coeffs = np.poly(poles)
+    print(poly_coeffs)
 
     # Cria q_c(A) = A^n + a_{n-1}A^{n-1} + ... + a_1A + a_0I
     q_c_A = np.linalg.matrix_power(A, n)
@@ -107,8 +112,13 @@ def ackermann_control_gain(A, B, poles):
         # print(f"poly: {poly_coeffs[i]}, n-i: {n-i}")
         q_c_A += poly_coeffs[i] * np.linalg.matrix_power(A, n-i)
 
+    print("-------")
+    sp.pprint(q_c_A)
+
     # Calcular K = [0 0 ... 1]U^{-1}q_c(A)
     U_inv = np.linalg.inv(U)
+    print("-------")
+    sp.pprint(U_inv)
     e_1 = np.zeros((n, 1))
     e_1[-1, 0] = 1
     K = -1*e_1.T @ U_inv @ q_c_A

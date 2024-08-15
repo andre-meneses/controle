@@ -106,6 +106,9 @@ class DiscreteSystemAnalysis:
                            [self.C@self.A, self.C@self.B]])
         right = np.linalg.inv(right)
 
+        print("kkkkkkk")
+        sp.pprint(k)
+
         zeros = np.zeros(right.shape[0])
         zeros[-1] = 1
 
