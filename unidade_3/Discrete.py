@@ -1,6 +1,7 @@
 import control as ctrl
 import numpy as np
 import sympy as sp
+from aux import *
 
 class DiscreteSystemAnalysis:
     def __init__(self, A, B, C, D, Ts=None):
@@ -13,7 +14,7 @@ class DiscreteSystemAnalysis:
         # Discretize only if Ts is provided
         self.sys_discrete = self.discretize() if Ts is not None else ctrl.StateSpace(A, B, C, D)
 
-        
+
     def discretize(self, method='zoh'):
         """
         Discretizes the continuous-time state-space model using Zero-Order Hold by default.
@@ -71,11 +72,20 @@ class DiscreteSystemAnalysis:
         """
         Computes the state feedback gain matrix K using Ackermann's formula.
         """
-        cont_matrix = ctrl.ctrb(self.A, self.B)
-        if np.linalg.matrix_rank(cont_matrix) != self.A.shape[0]:
+        if augmented:
+            A =self.A_aug
+            B =self.B_aug
+        else:
+            A =self.A
+            B =self.B
+
+        cont_matrix = ctrl.ctrb(A, B)
+
+        if np.linalg.matrix_rank(cont_matrix) != A.shape[0]:
             raise ValueError("The system is not controllable and pole placement cannot be performed.")
 
-        K = ctrl.acker(self.A, self.B, desired_poles)
+        # K = ctrl.acker(A, B, desired_poles)
+        K = ackermann_control_gain(A, B, desired_poles)
         return K
 
     def compute_observer_gain(self, desired_observer_poles):
@@ -89,6 +99,23 @@ class DiscreteSystemAnalysis:
         L = ctrl.place(self.A.T, self.C.T, desired_observer_poles)
         return L.T
 
+    def reference_tracker_gain(self, desired_poles):
+        k = self.ackermann_state_feedback(desired_poles, augmented=True)
+        k = ackermann_control_gain(self.A_aug, self.B_aug, desired_poles)
+        right = np.block([[self.A - np.eye(self.A.shape[0]), self.B],
+                           [self.C@self.A, self.C@self.B]])
+        right = np.linalg.inv(right)
+
+        zeros = np.zeros(right.shape[0])
+        zeros[-1] = 1
+
+        k = k + zeros
+        ks = k@right
+
+        k1 = ks[0,-1]
+        k2 = ks[0,:-1]
+
+        return k1,k2
 
     def augment_system(self):
         """
@@ -131,13 +158,13 @@ if __name__ == '__main__':
     Ts = 1  # Sampling time
 
     # Example for discrete system
-    system = SystemAnalysis(A, B, C, D, Ts)
+    system = DiscreteSystemAnalysis(A, B, C, D, Ts)
     print("Is the system stable?", system.check_stability())
     print("Is the system controllable?", system.check_controllability())
     print("Is the system observable?", system.check_observability())
 
     # For already discrete systems, set Ts=None
-    discrete_system = SystemAnalysis(A, B, C, D)
+    discrete_system = DiscreteSystemAnalysis(A, B, C, D)
     print("Is the discrete system stable?", discrete_system.check_stability())
     print("Is the discrete system controllable?", discrete_system.check_controllability())
     print("Is the discrete system observable?", discrete_system.check_observability())
